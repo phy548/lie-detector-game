@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>測謊機 — 你能分辨 AI 嗎？</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0e0e;
+      --surface: #1a1a1a;
+      --border: #2e2e2e;
+      --text: #f0ede6;
+      --muted: #888;
+      --accent: #e8d5a3;
+      --green: #4caf7d;
+      --red: #e05c5c;
+      --green-bg: #0d2b1a;
+      --red-bg: #2b0d0d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif TC', serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      max-width: 860px;
+      padding: 48px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .score-display {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .score-display span {
+      color: var(--accent);
+      font-size: 1.1rem;
+    }
+
+    .hero {
+      width: 100%;
+      max-width: 860px;
+      padding: 32px 24px 0;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .hero h1 em { font-style: normal; color: var(--accent); }
+
+    .hero p {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      max-width: 860px;
+      padding: 32px 24px 0;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .progress-track {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    main {
+      width: 100%;
+      max-width: 860px;
+      padding: 32px 24px 48px;
+    }
+
+    .loading-state {
+      text-align: center;
+      padding: 80px 0;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+    }
+
+    .error-state {
+      text-align: center;
+      padding: 60px 0;
+      color: var(--red);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.8;
+    }
+
+    .topic-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .topic-text {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 28px;
+      line-height: 1.4;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 580px) {
+      .cards { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .card:hover { border-color: #555; transform: translateY(-2px); }
+    .card.selected { border-color: var(--accent); background: #1f1e18; }
+    .card.correct { border-color: var(--green); background: var(--green-bg); cursor: default; }
+    .card.wrong { border-color: var(--red); background: var(--red-bg); cursor: default; }
+    .card.revealed { cursor: default; }
+
+    .card-tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card.selected .card-tag { color: var(--accent); }
+    .card.correct .card-tag { color: var(--green); }
+    .card.wrong .card-tag { color: var(--red); }
+
+    .card-tag-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+    }
+
+    .card-body {
+      font-size: 0.95rem;
+      line-height: 1.8;
+      color: #ccc;
+    }
+
+    .card.correct .card-body { color: #a8d5b5; }
+    .card.wrong .card-body { color: #d5a8a8; }
+
+    .card-verdict {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      display: none;
+    }
+
+    .card.correct .card-verdict { display: block; color: var(--green); }
+    .card.wrong .card-verdict { display: block; color: var(--red); }
+
+    .action-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hint {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 14px 40px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-confirm { background: var(--accent); color: #0e0e0e; }
+    .btn-confirm:hover { background: #f0e0b0; transform: translateY(-1px); }
+    .btn-confirm:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-next { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+    .btn-next:hover { background: #1f1e18; transform: translateY(-1px); }
+
+    .result-panel {
+      width: 100%;
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: none;
+    }
+
+    .result-panel.show { display: block; }
+    .result-panel.correct-panel { background: var(--green-bg); border: 1px solid var(--green); }
+    .result-panel.wrong-panel { background: var(--red-bg); border: 1px solid var(--red); }
+
+    .result-headline {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .result-panel.correct-panel .result-headline { color: var(--green); }
+    .result-panel.wrong-panel .result-headline { color: var(--red); }
+
+    .result-stat {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .result-stat strong { color: var(--accent); }
+
+    .end-screen {
+      text-align: center;
+      padding: 40px 0;
+      display: none;
+    }
+
+    .end-screen.show { display: block; }
+
+    .end-score-big {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(3rem, 10vw, 6rem);
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .end-label { font-size: 1rem; color: var(--muted); margin-bottom: 32px; }
+    .end-verdict { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+
+    .end-desc {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      max-width: 480px;
+      margin: 0 auto 36px;
+    }
+
+    .btn-restart { background: var(--accent); color: #0e0e0e; }
+    .btn-restart:hover { background: #f0e0b0; }
+
+    .corner-deco {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: #333;
+      letter-spacing: 0.1em;
+      writing-mode: vertical-rl;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">LIE DETECTOR · 測謊機</div>
+    <div class="score-display">得分 <span id="score-display">0</span> / <span id="total-display">0</span></div>
+  </header>
+
+  <div class="hero">
+    <h1>你能分辨<br><em>AI</em> 寫的嗎？</h1>
+    <p>兩段文字，一真一假。憑直覺猜，看你識破幾題。</p>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-info">
+      <span id="progress-label">載入中...</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <main>
+    <div class="loading-state" id="loading">載入題目中...</div>
+    <div class="error-state" id="error-state" style="display:none">
+      無法載入題目<br>請確認 questions.json 和 index.html 在同一個資料夾
+    </div>
+
+    <div id="game-area" style="display:none">
+      <div class="topic-label">本題主題</div>
+      <div class="topic-text" id="topic-text"></div>
+
+      <div class="cards">
+        <div class="card" id="card-a" onclick="selectCard('A')">
+          <div class="card-tag">
+            <div class="card-tag-badge">A</div>
+            <span id="tag-label-a">選我</span>
+          </div>
+          <div class="card-body" id="text-a"></div>
+          <div class="card-verdict" id="verdict-a"></div>
+        </div>
+        <div class="card" id="card-b" onclick="selectCard('B')">
+          <div class="card-tag">
+            <div class="card-tag-badge">B</div>
+            <span id="tag-label-b">選我</span>
+          </div>
+          <div class="card-body" id="text-b"></div>
+          <div class="card-verdict" id="verdict-b"></div>
+        </div>
+      </div>
+
+      <div class="action-area">
+        <div class="result-panel" id="result-panel">
+          <div class="result-headline" id="result-headline"></div>
+          <div class="result-stat" id="result-stat"></div>
+        </div>
+        <p class="hint" id="hint-text">點選你認為是真人寫的那段</p>
+        <button class="btn btn-confirm" id="confirm-btn" onclick="submitGuess()" disabled>確認答案</button>
+        <button class="btn btn-next" id="next-btn" onclick="nextRound()" style="display:none">下一題</button>
+      </div>
+    </div>
+
+    <div class="end-screen" id="end-screen">
+      <div class="end-score-big" id="end-score"></div>
+      <div class="end-label">答對題數</div>
+      <div class="end-verdict" id="end-verdict"></div>
+      <div class="end-desc" id="end-desc"></div>
+      <button class="btn btn-restart" onclick="restartGame()">再玩一次</button>
+    </div>
+  </main>
+
+  <div class="corner-deco">GENAI × HUMANITIES · 2026</div>
+
+  <script>
+    // ================================================
+    // Google Apps Script 網址（自動收集玩家數據用）
+    // ================================================
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxlmxd9lD3Jg6ZDVclYzn9ACdSCb3uB_98Dzz0Oi7zzraBPHozLLnShBpRdSchw-a9y/exec';
+
+    // ================================================
+    // 全域變數
+    // ================================================
+    let QUESTIONS = [];
+    let SITE_STATS = [];
+    let currentRound = 0;
+    let correctCount = 0;
+    let selectedCard = null;
+    let roundOrder = [];
+    let answered = false;
+    let playerAnswers = [];  // 記錄每題對錯，用於送出數據
+
+    // ================================================
+    // 讀取 questions.json，隨機抽 5 題
+    // ================================================
+    async function loadQuestions() {
+      try {
+        const res = await fetch('questions.json');
+        if (!res.ok) throw new Error('無法讀取 questions.json');
+
+        let allQuestions = await res.json();
+        allQuestions.sort(() => Math.random() - 0.5);
+        QUESTIONS = allQuestions.slice(0, 5);
+
+        SITE_STATS = QUESTIONS.map(() => ({
+          correct: Math.floor(Math.random() * 200) + 200,
+          total:   Math.floor(Math.random() * 200) + 400
+        }));
+
+        startGame();
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-state').style.display = 'block';
+        console.error(err);
+      }
+    }
+
+    // ================================================
+    // 遊戲邏輯
+    // ================================================
+    function startGame() {
+      currentRound = 0;
+      correctCount = 0;
+      playerAnswers = [];
+      roundOrder = QUESTIONS.map(() => Math.random() > 0.5 ? 'A' : 'B');
+      loadRound();
+    }
+
+    function loadRound() {
+      answered = false;
+      selectedCard = null;
+
+      const q = QUESTIONS[currentRound];
+      const humanIsA = roundOrder[currentRound] === 'A';
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('game-area').style.display = 'block';
+      document.getElementById('end-screen').classList.remove('show');
+
+      document.getElementById('topic-text').textContent = q.topic;
+      document.getElementById('text-a').textContent = humanIsA ? q.human : q.ai;
+      document.getElementById('text-b').textContent = humanIsA ? q.ai : q.human;
+
+      ['card-a', 'card-b'].forEach(id => {
+        document.getElementById(id).className = 'card';
+      });
+
+      document.getElementById('tag-label-a').textContent = '選我';
+      document.getElementById('tag-label-b').textContent = '選我';
+      document.getElementById('verdict-a').textContent = '';
+      document.getElementById('verdict-b').textContent = '';
+
+      const confirmBtn = document.getElementById('confirm-btn');
+      confirmBtn.disabled = true;
+      confirmBtn.style.display = 'inline-block';
+      document.getElementById('next-btn').style.display = 'none';
+      document.getElementById('hint-text').textContent = '點選你認為是真人寫的那段';
+      document.getElementById('result-panel').className = 'result-panel';
+
+      updateProgress();
+      updateScore();
+    }
+
+    function selectCard(choice) {
+      if (answered) return;
+      selectedCard = choice;
+
+      document.getElementById('card-a').className = 'card' + (choice === 'A' ? ' selected' : '');
+      document.getElementById('card-b').className = 'card' + (choice === 'B' ? ' selected' : '');
+      document.getElementById('tag-label-a').textContent = choice === 'A' ? '你選了這個' : '選我';
+      document.getElementById('tag-label-b').textContent = choice === 'B' ? '你選了這個' : '選我';
+      document.getElementById('confirm-btn').disabled = false;
+      document.getElementById('hint-text').textContent = '確定選這個嗎？';
+    }
+
+    function submitGuess() {
+      if (!selectedCard || answered) return;
+      answered = true;
+
+      const humanIsA = roundOrder[currentRound] === 'A';
+      const correctAnswer = humanIsA ? 'A' : 'B';
+      const isCorrect = selectedCard === correctAnswer;
+
+      if (isCorrect) correctCount++;
+      playerAnswers.push(isCorrect ? 1 : 0);  // 記錄這題對錯
+
+      const correctCardId = correctAnswer === 'A' ? 'card-a' : 'card-b';
+      const wrongCardId   = correctAnswer === 'A' ? 'card-b' : 'card-a';
+
+      document.getElementById(correctCardId).className = 'card correct revealed';
+      document.getElementById(wrongCardId).className = 'card wrong revealed';
+
+      document.getElementById('verdict-' + correctAnswer.toLowerCase()).textContent = '真人寫的';
+      const aiCard = correctAnswer === 'A' ? 'b' : 'a';
+      document.getElementById('verdict-' + aiCard).textContent = 'AI 生成的';
+      document.getElementById('tag-label-a').textContent = correctAnswer === 'A' ? '真人' : 'AI';
+      document.getElementById('tag-label-b').textContent = correctAnswer === 'B' ? '真人' : 'AI';
+
+      const stats = SITE_STATS[currentRound];
+      stats.total += 1;
+      if (isCorrect) stats.correct += 1;
+      const accuracy = Math.round(stats.correct / stats.total * 100);
+
+      const resultPanel = document.getElementById('result-panel');
+      resultPanel.className = 'result-panel show ' + (isCorrect ? 'correct-panel' : 'wrong-panel');
+      document.getElementById('result-headline').textContent = isCorrect
+        ? '答對了！你識破了 AI！'
+        : '答錯了！真人是 ' + correctAnswer + ' 那段';
+      document.getElementById('result-stat').innerHTML =
+        '全站共 <strong>' + stats.total + '</strong> 人答這題，猜對率：<strong>' + accuracy + '%</strong>';
+
+      document.getElementById('confirm-btn').style.display = 'none';
+      document.getElementById('hint-text').textContent = '';
+
+      if (currentRound < QUESTIONS.length - 1) {
+        document.getElementById('next-btn').style.display = 'inline-block';
+      } else {
+        setTimeout(showEndScreen, 1200);
+      }
+
+      updateScore();
+    }
+
+    function nextRound() {
+      currentRound++;
+      loadRound();
+    }
+
+    // ================================================
+    // 送出數據到 Google Sheets
+    // ================================================
+    function sendToSheets() {
+      const result = { total_correct: correctCount };
+      for (let i = 0; i < playerAnswers.length; i++) {
+        result['Q' + (i + 1)] = playerAnswers[i];
+      }
+
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result)
+      }).catch(err => console.log('數據送出失敗：' + err));
+    }
+
+    // ================================================
+    // 結算畫面（送出數據）
+    // ================================================
+    function showEndScreen() {
+      document.getElementById('game-area').style.display = 'none';
+      document.getElementById('end-screen').classList.add('show');
+
+      // 自動送出數據到 Google Sheets
+      sendToSheets();
+
+      const total = QUESTIONS.length;
+      document.getElementById('end-score').textContent = correctCount + ' / ' + total;
+
+      const pct = correctCount / total;
+      let verdict, desc;
+
+      if (pct === 1) {
+        verdict = '完美！你是 AI 偵測器！';
+        desc = '你答對了所有題目。你對語言細節非常敏感，已經對 AI 寫作的模式產生了直覺。';
+      } else if (pct >= 0.8) {
+        verdict = '銳利！AI 很難騙過你';
+        desc = '你答對了大多數題目。你可能注意到 AI 寫作的某些特徵——太對稱、太完整，少了一點真實的混亂。';
+      } else if (pct >= 0.6) {
+        verdict = '還不錯，但 AI 也騙到你了';
+        desc = '你和大多數人差不多。AI 寫作越來越像人，有時候連人類自己都難以分辨。';
+      } else if (pct >= 0.4) {
+        verdict = 'AI 幾乎騙過了你';
+        desc = '你有一半以上答錯了。現代 AI 確實越來越擅長模仿人類的語氣與情感節奏。';
+      } else {
+        verdict = 'AI 完勝！';
+        desc = '答錯很多題其實很正常——AI 現在真的越來越難分辨了。你有沒有開始想：什麼叫做真人的聲音？';
+      }
+
+      document.getElementById('end-verdict').textContent = verdict;
+      document.getElementById('end-desc').textContent = desc;
+    }
+
+    function restartGame() {
+      document.getElementById('end-screen').classList.remove('show');
+      loadQuestions();
+    }
+
+    function updateProgress() {
+      const pct = Math.round((currentRound / QUESTIONS.length) * 100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-label').textContent = '第 ' + (currentRound + 1) + ' 題，共 ' + QUESTIONS.length + ' 題';
+      document.getElementById('progress-pct').textContent = pct + '%';
+    }
+
+    function updateScore() {
+      document.getElementById('score-display').textContent = correctCount;
+      document.getElementById('total-display').textContent = currentRound + (answered ? 1 : 0);
+    }
+
+    window.onload = () => {
+      setTimeout(loadQuestions, 600);
+    };
+  </script>
+</body>
+</html>
