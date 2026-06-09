@@ -551,6 +551,10 @@
       document.getElementById('game-area').style.display = 'none';
       const endScreen = document.getElementById('end-screen');
       endScreen.classList.add('show');
+      
+      // 🌟 新增這兩行：在結算畫面時，手動把進度條填滿到 100%
+      document.getElementById('progress-fill').style.width = '100%';
+      document.getElementById('progress-pct').textContent = '100%';
 
       // 準備打包資料並送出
       gameResults['timestamp'] = new Date().toLocaleString();
