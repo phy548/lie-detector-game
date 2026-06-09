@@ -551,8 +551,6 @@
       document.getElementById('result-headline').textContent = isCorrect
         ? '答對了！你識破了 AI！'
         : '答錯了！真人是 ' + correctAnswer + ' 那段';
-      document.getElementById('result-stat').innerHTML =
-        '全站共 <strong>' + stats.total + '</strong> 人答這題，猜對率：<strong>' + accuracy + '%</strong>';
 
       document.getElementById('confirm-btn').style.display = 'none';
       document.getElementById('hint-text').textContent = '';
